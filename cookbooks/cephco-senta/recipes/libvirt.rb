@@ -57,6 +57,12 @@ cookbook_file '/srv/chef/libvirt-net-front.xml' do
   mode 0644
 end
 
+cookbook_file '/srv/chef/libvirt-net-ipmi.xml' do
+  owner 'root'
+  group 'root'
+  mode 0644
+end
+
 execute 'set up libvirt network front' do
   command <<-'EOH'
     set -e
@@ -76,6 +82,27 @@ execute 'set up libvirt network front' do
     done
   EOH
 end
+
+execute 'set up libvirt network ipmi' do
+  command <<-'EOH'
+    set -e
+    if ! virsh net-uuid ipmi >/dev/null 2>/dev/null; then
+      # does not exist
+      virsh net-define /srv/chef/libvirt-net-ipmi.xml
+    fi
+    virsh -q net-info ipmi | while read line; do
+      case "$line" in
+        Active:\ *no)
+          virsh net-start ipmi
+          ;;
+        Autostart:\ *no)
+          virsh net-autostart ipmi
+          ;;
+      esac
+    done
+  EOH
+end
+
 
 execute 'allow libvirt for user ubuntu' do
   command <<-'EOH'
